@@ -1,0 +1,20 @@
+# Env
+.env
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Java
+target/
+
+# Frontend
+node_modules/
+dist/
+.angular/
+
+# Original spec (kept as SPEC.md)
+SupportPilot — Especificação.md

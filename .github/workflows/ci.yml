@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ticket-service, ai-triage-service]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: ${{ matrix.service }}/pom.xml
+
+      - name: Build and test
+        run: ./mvnw -B verify
+
+  compose:
+    name: Validate docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start infrastructure
+        run: docker compose up -d --wait --wait-timeout 120
+
+      - name: Check pgvector extension
+        run: docker compose exec -T postgres psql -U supportpilot -d supportpilot -c "SELECT extversion FROM pg_extension WHERE extname = 'vector';"
+
+      - name: Check Kafka
+        run: docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
